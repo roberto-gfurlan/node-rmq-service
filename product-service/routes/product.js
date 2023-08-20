@@ -2,8 +2,7 @@ import ampq from 'amqplib'
 import Router from 'express'
 import Product from '../models/product.js'
 
-
-const router = Router()
+const router = new Router()
 
 let order, channel, connection
 
@@ -26,27 +25,28 @@ router.post('/', async (req, res) => {
   await product.save()
   return res.status(201).json({
     message: 'Product created successfully',
-    product
+    product,
   })
 })
 
 //Buy product
 router.post('/buy', async (req, res) => {
   const { productId } = req.body
-  const product = await Product.find({ _id: { $in: productId } });
+  const product = await Product.find({ _id: { $in: productId } })
 
   //send order to rabbitMQ
   channel.sendToQueue('product-service-queue', Buffer.from(JSON.stringify(product)))
 
   // Consume previously placed order from RabbitMQ & acknowledge the transaction
   channel.consume('product-service-queue', (data) => {
-    console.log("Consumed product from queue");
+    console.log('Consumed product from queue')
     order = JSON.parse(data.content)
     channel.ack(data)
-  });
+  })
   return res.send(201).json({
-    message: "Order placed successfully",
-    order
+    message: 'Order placed successfully',
+    order,
   })
 })
-  
+
+module.exports = router
